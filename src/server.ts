@@ -1,6 +1,8 @@
 import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import { filterImageFromURL, deleteLocalFiles } from "./util/util";
+import fs from "fs";
+import path from "path";
 
 (async () => {
   // Init the Express application
@@ -30,19 +32,29 @@ import { filterImageFromURL, deleteLocalFiles } from "./util/util";
 
   //! END @TODO1
 
-  app.get("/filteredimage?image_url", async (req: Request, res: Response) => {
-    const { imageUrl } = req.params;
+  app.get("/filteredimage", async (req: Request, res: Response) => {
+    const { image_url: imageUrl } = req.query;
 
     // validate image url
     if (imageUrl == null) {
-      res.status(400).json({ message: "Invalid image url" });
+      res.status(400).json({ message: "image_url is required" });
+      return;
     }
 
     const image = await filterImageFromURL(imageUrl);
 
-    console.log({ image });
+    res.sendFile(image, () => {
+      const tempFiles = fs.readdirSync(path.join(__dirname, "util", "tmp"));
 
-    res.sendFile(image);
+      const getAbsoluteFilepath = (filePath: string) =>
+        path.resolve(path.join(filePath));
+
+      const localFiles = tempFiles.map((fileName) =>
+        getAbsoluteFilepath(path.join(__dirname, "util", "tmp", fileName))
+      );
+
+      deleteLocalFiles(localFiles);
+    });
   });
 
   // Root Endpoint
